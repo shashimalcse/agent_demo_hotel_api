@@ -3,5 +3,9 @@ schemaVersion: 1.0
 endpoints:
 - name: hotel_api
   service:
-     port: 8001
+    basePath: /api
+    port: 8001
   type: REST
+  networkVisibilities:
+      - Public
+  schemaFilePath: openapi.yaml

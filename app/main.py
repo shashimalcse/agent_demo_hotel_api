@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, Security
+from fastapi import FastAPI, HTTPException, Depends, Security, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
 from datetime import date
@@ -6,6 +6,7 @@ from .schemas import *
 from .dependencies import TokenData, validate_token
 
 app = FastAPI()
+api_router = APIRouter(prefix="/api")
 
 app.add_middleware(
     CORSMiddleware,
@@ -231,7 +232,7 @@ user_bookings_data = [
 ]
 last_booking_id = 0
 
-@app.get("/hotels", response_model=Hotels)
+@api_router.get("/hotels", response_model=Hotels)
 async def list_hotels(
     token_data: TokenData = Security(validate_token, scopes=["read_hotels"])
 ):
@@ -242,7 +243,7 @@ async def list_hotels(
         ]
     }
 
-@app.get("/hotels/{hotel_id}", response_model=Hotel)
+@api_router.get("/hotels/{hotel_id}", response_model=Hotel)
 async def get_hotel(
     hotel_id: int,
     token_data: TokenData = Security(validate_token, scopes=["read_rooms"])
@@ -278,7 +279,7 @@ class Room(BaseModel):
     cancellationPolicy: str
     is_available: bool
 
-@app.get("/rooms/{room_id}", response_model=Room)
+@api_router.get("/rooms/{room_id}", response_model=Room)
 async def get_room_details(
     room_id: int,
     token_data: TokenData = Security(validate_token, scopes=["read_rooms"])
@@ -304,7 +305,7 @@ async def get_room_details(
         "is_available": room_data["is_available"]
     }
 
-@app.post("/bookings", response_model=Booking)
+@api_router.post("/bookings", response_model=Booking)
 async def book_room(
     booking: BookingCreate,
     token_data: TokenData = Security(validate_token, scopes=["create_bookings"])
@@ -351,7 +352,7 @@ async def book_room(
     
     return Booking(**bookings_data[last_booking_id])
 
-@app.get("/bookings/{booking_id}", response_model=Booking)
+@api_router.get("/bookings/{booking_id}", response_model=Booking)
 async def get_booking_details(
     booking_id: int,
     token_data: TokenData = Security(validate_token, scopes=["read_bookings"])
@@ -360,7 +361,7 @@ async def get_booking_details(
         raise HTTPException(status_code=404, detail="Booking not found")
     return Booking(**bookings_data[booking_id])
 
-@app.post("/bookings/preview", response_model=BookingPreview)
+@api_router.post("/bookings/preview", response_model=BookingPreview)
 async def get_booking_preview(
     booking_preview_request: BookingPreviewRequest,
     token_data: TokenData = Security(validate_token, scopes=["read_rooms"])
@@ -415,7 +416,7 @@ async def get_booking_preview(
     }
 
 
-@app.get("/users/{user_id}/bookings", response_model=List[Booking])
+@api_router.get("/users/{user_id}/bookings", response_model=List[Booking])
 async def get_user_bookings(
     user_id: str,
     token_data: TokenData = Security(validate_token, scopes=["read_bookings"])
@@ -426,10 +427,13 @@ async def get_user_bookings(
         if booking["user_id"] == user_id
     ]
 
-@app.get("/users/{user_id}/loyalty", response_model=UserLoyalty)
+@api_router.get("/users/{user_id}/loyalty", response_model=UserLoyalty)
 async def get_user_loyalty(
     user_id: int,
     token_data: TokenData = Security(validate_token, scopes=["read_loyalty"])
 ):
     # Return mock loyalty data
     return {"user_id": user_id, "loyalty_points": 1200}
+
+# Include the router in the main app
+app.include_router(api_router)
