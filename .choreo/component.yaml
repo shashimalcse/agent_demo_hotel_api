@@ -5,7 +5,7 @@ endpoints:
   - name: hotel-api
     displayName: Hotel REST Endpoint
     service:
-      basePath: /api
+      basePath: /
       port: 8001
     type: REST
     networkVisibilities:
