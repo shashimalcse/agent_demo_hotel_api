@@ -4,7 +4,7 @@ info:
   description: API for hotel booking system
   version: 1.0.0
 servers:
-  - url: http://localhost:8000
+  - url: http://localhost:8001
     description: Local development server
 
 components:
