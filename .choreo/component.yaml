@@ -1,0 +1,7 @@
+schemaVersion: 1.0 
+ # Example endpoint configuration
+endpoints:
+- name: hotel_api
+  service:
+     port: 8001
+  type: REST
