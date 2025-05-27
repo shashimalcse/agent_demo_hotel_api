@@ -48,9 +48,8 @@ async def validate_token(
         act = Actor(sub=None)
     elif isinstance(act_claim, dict):
         try:
-            sub = act_claim.get("sub", sub)  # Use sub from act if available
-            act = Actor(sub=sub)
-            print(f"Actor sub: {act.sub}")  # Debugging output
+            act_sub = act_claim.get("sub")  # Use sub from act if available
+            act = Actor(sub=act_sub)
         except Exception as e:
             # Log the error and default to no actor
             print(f"Warning: Could not parse act claim {act_claim}: {e}")
