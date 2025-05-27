@@ -7,9 +7,14 @@ from pydantic import BaseModel
 
 security = HTTPBearer()
 
+class Actor(BaseModel):
+    sub: str | None = None
+
 class TokenData(BaseModel):
-    username: str | None = None
+    sub: str | None = None
+    act: Actor = None
     scopes: list[str] = []
+
 
 async def validate_token(
     security_scopes: SecurityScopes,
@@ -30,12 +35,30 @@ async def validate_token(
             detail="Could not decode token",
         )
 
-    username = payload.get("sub")
-    if username is None:
+    sub = payload.get("sub")
+    if sub is None:
         raise HTTPException(
             status_code=401,
             detail="Missing 'sub' in token",
         )
+    
+    # Extract actor information if available
+    act_claim = payload.get("act")
+    if act_claim is None:
+        act = Actor(sub=None)
+    elif isinstance(act_claim, dict):
+        try:
+            sub = act_claim.get("sub", sub)  # Use sub from act if available
+            act = Actor(sub=sub)
+            print(f"Actor sub: {act.sub}")  # Debugging output
+        except Exception as e:
+            # Log the error and default to no actor
+            print(f"Warning: Could not parse act claim {act_claim}: {e}")
+            act = Actor(sub=None)
+    else:
+        # Handle case where act is not a dict
+        print(f"Warning: act claim is not a dict: {act_claim}")
+        act = Actor(sub=None)
 
     token_scopes = payload.get("scope", "").split()
     # Check that the token has ALL the required scopes
@@ -46,4 +69,4 @@ async def validate_token(
                 detail="Not enough permissions",
             )
 
-    return TokenData(username=username, scopes=token_scopes)
+    return TokenData(sub=sub, act=act, scopes=token_scopes)

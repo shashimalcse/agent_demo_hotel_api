@@ -1,9 +1,66 @@
-from fastapi import FastAPI, HTTPException, Depends, Security, APIRouter
+import json
+import logging
+from fastapi import FastAPI, HTTPException, Depends, Security, APIRouter, Request
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
 from datetime import date
 from .schemas import *
 from .dependencies import TokenData, validate_token
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
+
+def log_request_details(request: Request, token_data: TokenData, extra_info: dict = None):
+    """Enhanced logging function with structured information"""
+    endpoint = request.url.path
+    method = request.method
+    sub = token_data.sub
+    act = token_data.act.sub
+
+    
+    # Get client IP
+    client_ip = request.client.host if request.client else 'N/A'
+    
+    # Get user agent
+    user_agent = request.headers.get('user-agent', 'N/A')
+    
+    # Build log message
+    log_data = {
+        "method": method,
+        "endpoint": endpoint,
+        "client_ip": client_ip,
+        "user_id": sub,
+        "actor": act,
+        "user_agent": user_agent[:100] + "..." if len(user_agent) > 100 else user_agent
+    }
+    
+    # Add extra information if provided
+    if extra_info:
+        log_data.update(extra_info)
+    
+    # Create structured log message
+    log_message = " | ".join([
+        f"{method} {endpoint}",
+        f"sub: {sub}",
+        f"act: {act}",
+    ])
+    
+    # Add extra info to message if provided
+    if extra_info:
+        extra_parts = []
+        for key, value in extra_info.items():
+            extra_parts.append(f"{key}: {value}")
+        if extra_parts:
+            log_message += " | " + " | ".join(extra_parts)
+    
+    logger.info(log_message)
+    
+    # Also log as JSON for structured logging tools
+    logger.debug(f"Request details: {json.dumps(log_data, default=str)}")
 
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
@@ -234,8 +291,12 @@ last_booking_id = 0
 
 @api_router.get("/hotels", response_model=Hotels)
 async def list_hotels(
+    request: Request,
     token_data: TokenData = Security(validate_token, scopes=["read_hotels"])
 ):
+
+    log_request_details(request, token_data)
+
     return {
         "hotels": [
             HotelBasic(id=hid, **hotel_data)
@@ -245,9 +306,13 @@ async def list_hotels(
 
 @api_router.get("/hotels/{hotel_id}", response_model=Hotel)
 async def get_hotel(
+    request: Request,
     hotel_id: int,
     token_data: TokenData = Security(validate_token, scopes=["read_rooms"])
 ):
+    
+    log_request_details(request, token_data)
+
     if hotel_id not in hotels_data:
         raise HTTPException(status_code=404, detail="Hotel not found")
     
@@ -281,9 +346,13 @@ class Room(BaseModel):
 
 @api_router.get("/rooms/{room_id}", response_model=Room)
 async def get_room_details(
+    request: Request,
     room_id: int,
     token_data: TokenData = Security(validate_token, scopes=["read_rooms"])
 ):
+    
+    log_request_details(request, token_data)
+
     # Find the hotel that has this room
     room_data = None
     for hotel_rooms in rooms_data.values():
@@ -307,9 +376,13 @@ async def get_room_details(
 
 @api_router.post("/bookings", response_model=Booking)
 async def book_room(
+    request: Request,
     booking: BookingCreate,
     token_data: TokenData = Security(validate_token, scopes=["create_bookings"])
 ):
+    
+    log_request_details(request, token_data)
+
     global last_booking_id
     
     # Validate hotel exists
@@ -342,7 +415,7 @@ async def book_room(
         "id": last_booking_id,  # Add booking ID here
         "hotel_id": booking.hotel_id,
         "hotel_name": hotel["name"],
-        "user_id": booking.user_id,
+        "user_id": token_data.sub,  # Use the user ID from the token
         "room_id": booking.room_id,
         "room_type": room["room_type"],
         "check_in": booking.check_in,
@@ -354,18 +427,26 @@ async def book_room(
 
 @api_router.get("/bookings/{booking_id}", response_model=Booking)
 async def get_booking_details(
+    request: Request,
     booking_id: int,
     token_data: TokenData = Security(validate_token, scopes=["read_bookings"])
 ):
+    
+    log_request_details(request, token_data)
+
     if booking_id not in bookings_data:
         raise HTTPException(status_code=404, detail="Booking not found")
     return Booking(**bookings_data[booking_id])
 
 @api_router.post("/bookings/preview", response_model=BookingPreview)
 async def get_booking_preview(
+    request: Request,
     booking_preview_request: BookingPreviewRequest,
     token_data: TokenData = Security(validate_token, scopes=["read_rooms"])
 ):
+    
+    log_request_details(request, token_data)
+
     room_id = booking_preview_request.room_id
     check_in = booking_preview_request.check_in
     check_out = booking_preview_request.check_out

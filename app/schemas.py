@@ -46,7 +46,6 @@ class Hotels(BaseModel):
 class Rooms(BaseModel):
     rooms: List[RoomBasic]    
 class BookingCreate(BaseModel):
-    user_id: str
     hotel_id: int
     room_id: int
     check_in: date
