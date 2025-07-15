@@ -2,15 +2,6 @@ from pydantic import BaseModel
 from datetime import date
 from typing import Dict, List, Optional
 
-class Room(BaseModel):
-    id: int
-    room_number: str
-    room_type: str
-    price_per_night: float
-    occupancy: int
-    amenities: List[str]
-    cancellationPolicy: str
-    is_available: bool
 
 class RoomBasic(BaseModel):
     id: int
@@ -62,9 +53,6 @@ class Booking(BaseModel):
     check_out: date
     total_price: float
 
-class UserLoyalty(BaseModel):
-    user_id: str
-    loyalty_points: int
 
 class RoomSearchResult(BaseModel):
     room_id: int
@@ -77,22 +65,3 @@ class RoomSearchResult(BaseModel):
     room_type_description: str
     price_per_night: float
 
-class BookingPreviewRequest(BaseModel):
-    room_id: int
-    check_in: date
-    check_out: date    
-
-class BookingPreview(BaseModel):
-    room_id: int
-    room_number: str
-    room_type: str
-    room_type_description: str
-    price_per_night: float
-    total_price: float
-    hotel_id: int
-    hotel_name: str
-    hotel_description: str
-    hotel_rating: float
-    is_available: bool
-    check_in: date
-    check_out: date

@@ -1,11 +1,15 @@
 import json
 import logging
+import os
 from fastapi import FastAPI, HTTPException, Depends, Security, APIRouter, Request
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
 from datetime import date
 from .schemas import *
 from .dependencies import TokenData, validate_token
+from dotenv import load_dotenv
+
+load_dotenv()
 
 logging.basicConfig(
     level=logging.INFO,
@@ -65,12 +69,32 @@ def log_request_details(request: Request, token_data: TokenData, extra_info: dic
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
+# CORS Configuration
+def get_cors_origins():
+    """Get CORS origins from environment variable"""
+    cors_origins = os.getenv('CORS_ORIGINS', 'http://localhost:3000,https://localhost:3000')
+    return [origin.strip() for origin in cors_origins.split(',')]
+
+def get_cors_methods():
+    """Get CORS methods from environment variable"""
+    cors_methods = os.getenv('CORS_METHODS', '*')
+    if cors_methods == '*':
+        return ["*"]
+    return [method.strip() for method in cors_methods.split(',')]
+
+def get_cors_headers():
+    """Get CORS headers from environment variable"""
+    cors_headers = os.getenv('CORS_HEADERS', '*')
+    if cors_headers == '*':
+        return ["*"]
+    return [header.strip() for header in cors_headers.split(',')]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://localhost:3000"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=get_cors_origins(),
+    allow_credentials=os.getenv('CORS_CREDENTIALS', 'true').lower() == 'true',
+    allow_methods=get_cors_methods(),
+    allow_headers=get_cors_headers(),
 )
 
 # In-memory data stores
@@ -334,45 +358,6 @@ async def get_hotel(
         "promotions": hotel["promotions"],
         "rooms": rooms
     }
-class Room(BaseModel):
-    id: int
-    room_number: str
-    room_type: str
-    price_per_night: float
-    occupancy: int
-    amenities: List[str]
-    cancellationPolicy: str
-    is_available: bool
-
-@api_router.get("/rooms/{room_id}", response_model=Room)
-async def get_room_details(
-    request: Request,
-    room_id: int,
-    token_data: TokenData = Security(validate_token, scopes=["read_rooms"])
-):
-    
-    log_request_details(request, token_data)
-
-    # Find the hotel that has this room
-    room_data = None
-    for hotel_rooms in rooms_data.values():
-        if room_id in hotel_rooms:
-            room_data = hotel_rooms[room_id]
-            break
-    
-    if not room_data:
-        raise HTTPException(status_code=404, detail="Room not found")
-    
-    return {
-        "id": room_id,
-        "room_number": room_data["room_number"],
-        "room_type": room_data["room_type"],
-        "price_per_night": room_data["price_per_night"],
-        "occupancy": room_data["occupancy"],
-        "amenities": room_data["amenities"],
-        "cancellationPolicy": room_data["cancellationPolicy"],
-        "is_available": room_data["is_available"]
-    }
 
 @api_router.post("/bookings", response_model=Booking)
 async def book_room(
@@ -438,64 +423,6 @@ async def get_booking_details(
         raise HTTPException(status_code=404, detail="Booking not found")
     return Booking(**bookings_data[booking_id])
 
-@api_router.post("/bookings/preview", response_model=BookingPreview)
-async def get_booking_preview(
-    request: Request,
-    booking_preview_request: BookingPreviewRequest,
-    token_data: TokenData = Security(validate_token, scopes=["read_rooms"])
-):
-    
-    log_request_details(request, token_data)
-
-    room_id = booking_preview_request.room_id
-    check_in = booking_preview_request.check_in
-    check_out = booking_preview_request.check_out
-
-    # Find the hotel that has this room
-    hotel_id = None
-    room_data = None
-    for hid, rooms in rooms_data.items():
-        if room_id in rooms:
-            hotel_id = hid
-            room_data = rooms[room_id]
-            break
-    
-    if not room_data:
-        raise HTTPException(status_code=404, detail="Room not found")
-    
-    # Check room availability
-    is_available = True
-    # for booking in bookings_data.values():  # Fix: iterate over values
-    #     if (booking["hotel_id"] == hotel_id and 
-    #         booking["room_id"] == room_id and 
-    #         not (check_out <= booking["check_in"] or check_in >= booking["check_out"])):
-    #         is_available = False
-    #         break
-    
-    # Calculate total price
-    days = (check_out - check_in).days
-    total_price = room_data["price_per_night"] * days
-    
-    # Get hotel and room type details
-    hotel = hotels_data[hotel_id]
-    room_type_details = room_type_data[room_data["room_type"]]
-    
-    return {
-        "room_id": room_id,
-        "room_number": room_data["room_number"],
-        "room_type": room_data["room_type"],
-        "room_type_description": room_type_details["description"],
-        "price_per_night": room_data["price_per_night"],
-        "total_price": total_price,
-        "hotel_id": hotel_id,
-        "hotel_name": hotel["name"],
-        "hotel_description": hotel["description"],
-        "hotel_rating": hotel["rating"],
-        "is_available": is_available,
-        "check_in": check_in,
-        "check_out": check_out
-    }
-
 
 @api_router.get("/users/{user_id}/bookings", response_model=List[Booking])
 async def get_user_bookings(
@@ -508,13 +435,6 @@ async def get_user_bookings(
         if booking["user_id"] == user_id
     ]
 
-@api_router.get("/users/{user_id}/loyalty", response_model=UserLoyalty)
-async def get_user_loyalty(
-    user_id: int,
-    token_data: TokenData = Security(validate_token, scopes=["read_loyalty"])
-):
-    # Return mock loyalty data
-    return {"user_id": user_id, "loyalty_points": 1200}
 
 # Include the router in the main app
 app.include_router(api_router)

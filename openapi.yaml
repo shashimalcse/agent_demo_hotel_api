@@ -48,7 +48,7 @@ components:
           items:
             $ref: '#/components/schemas/HotelBasic'
 
-    Room:
+    RoomBasic:
       type: object
       properties:
         id:
@@ -62,12 +62,6 @@ components:
           format: float
         occupancy:
           type: integer
-        amenities:
-          type: array
-          items:
-            type: string
-        cancellationPolicy:
-          type: string
         is_available:
           type: boolean
 
@@ -104,7 +98,7 @@ components:
         rooms:
           type: array
           items:
-            $ref: '#/components/schemas/Room'
+            $ref: '#/components/schemas/RoomBasic'
 
     BookingCreate:
       type: object
@@ -155,64 +149,6 @@ components:
           type: number
           format: float
 
-    BookingPreviewRequest:
-      type: object
-      properties:
-        room_id:
-          type: integer
-        check_in:
-          type: string
-          format: date
-        check_out:
-          type: string
-          format: date
-      required:
-        - room_id
-        - check_in
-        - check_out
-
-    BookingPreview:
-      type: object
-      properties:
-        room_id:
-          type: integer
-        room_number:
-          type: string
-        room_type:
-          type: string
-        room_type_description:
-          type: string
-        price_per_night:
-          type: number
-          format: float
-        total_price:
-          type: number
-          format: float
-        hotel_id:
-          type: integer
-        hotel_name:
-          type: string
-        hotel_description:
-          type: string
-        hotel_rating:
-          type: number
-          format: float
-        is_available:
-          type: boolean
-        check_in:
-          type: string
-          format: date
-        check_out:
-          type: string
-          format: date
-
-    UserLoyalty:
-      type: object
-      properties:
-        user_id:
-          type: integer
-        loyalty_points:
-          type: integer
 
   securitySchemes:
     BearerAuth:
@@ -268,31 +204,6 @@ paths:
         '403':
           description: Forbidden
 
-  /api/rooms/{room_id}:
-    get:
-      summary: Get room details
-      operationId: getRoomDetails
-      security:
-        - BearerAuth: ['read_rooms']
-      parameters:
-        - name: room_id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: Room details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Room'
-        '404':
-          description: Room not found
-        '401':
-          description: Unauthorized
-        '403':
-          description: Forbidden
 
   /api/bookings:
     post:
@@ -348,31 +259,6 @@ paths:
         '403':
           description: Forbidden
 
-  /api/bookings/preview:
-    post:
-      summary: Get booking preview
-      operationId: getBookingPreview
-      security:
-        - BearerAuth: ['read_rooms']
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/BookingPreviewRequest'
-      responses:
-        '200':
-          description: Booking preview
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/BookingPreview'
-        '404':
-          description: Room not found
-        '401':
-          description: Unauthorized
-        '403':
-          description: Forbidden
 
   /api/users/{user_id}/bookings:
     get:
@@ -401,26 +287,3 @@ paths:
         '403':
           description: Forbidden
 
-  /api/users/{user_id}/loyalty:
-    get:
-      summary: Get user loyalty points
-      operationId: getUserLoyalty
-      security:
-        - BearerAuth: ['read_loyalty']
-      parameters:
-        - name: user_id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: User loyalty information
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserLoyalty'
-        '401':
-          description: Unauthorized
-        '403':
-          description: Forbidden
